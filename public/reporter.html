@@ -126,10 +126,10 @@
 
                         <div class="card studio-main">
                             <label class="sr-only" for="editTitle">כותרת הכתבה</label>
-                            <input type="text" class="write-title" id="editTitle" placeholder="כותרת הכתבה" maxlength="200" autocomplete="off" required>
+                            <input type="text" class="write-title" id="editTitle" placeholder="כותרת הכתבה" maxlength="300" autocomplete="off" required>
 
                             <label class="sr-only" for="editSummary">תקציר</label>
-                            <textarea class="textarea write-lead" id="editSummary" rows="2" placeholder="תקציר קצר שיופיע בדף הבית ובתוצאות החיפוש..."></textarea>
+                            <textarea class="textarea write-lead" id="editSummary" rows="2" maxlength="600" placeholder="תקציר קצר שיופיע בדף הבית ובתוצאות החיפוש..."></textarea>
 
                             <div>
                                 <div class="md-toolbar" role="toolbar" aria-label="עיצוב הטקסט">
@@ -566,12 +566,9 @@
             // too big for a keepalive request: the browser would refuse it, so leave the changes to the regular save
             if (bodyBytes(payload) >= 60000) return;
 
-            const headers = { 'Content-Type': 'application/json' };
-            const token = getAuthToken();
-            if (token) headers.Authorization = `Bearer ${token}`;
             fetch(articleId ? `/api/articles/${articleId}/autosave` : '/api/articles/autosave', {
                 method: articleId ? 'PUT' : 'POST',
-                headers,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
                 keepalive: true
             }).catch(() => {});

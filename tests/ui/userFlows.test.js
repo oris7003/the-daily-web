@@ -70,7 +70,7 @@ async function openStaffPage(user, url, viewport = 'desktop') {
     return opened;
 }
 
-const authHeaders = async (username) => ({ Authorization: `Bearer ${(await apiLogin(site, username)).token}`, 'Content-Type': 'application/json' });
+const authHeaders = async (username) => ({ Cookie: (await apiLogin(site, username)).cookie, 'Content-Type': 'application/json' });
 const noPageProblems = (page) => {
     assert.deepEqual(page.errors, [], 'script errors in the page');
     assert.deepEqual(page.unexpectedFailures(), [], 'failed requests');
@@ -282,7 +282,7 @@ flow('Login: a wrong password is explained, a reporter lands in the reporter des
         await until(page, () => !document.getElementById('authAlert').hidden);
         assert.match(await visibleText(page, '#authAlert'), /שגויים/);
         assert.equal(await page.run(() => location.pathname), '/login.html');
-        assert.equal(await page.run(() => localStorage.getItem('token')), null);
+        assert.equal(await page.run(() => localStorage.getItem('user')), null);
 
         // the show / hide password button
         await page.click('#toggleLoginPassword');
@@ -301,7 +301,7 @@ flow('Login: a wrong password is explained, a reporter lands in the reporter des
         // logging out ends the session: the desk is closed again
         await page.click('.sidebar [data-action="logout"]');
         await page.waitForUrl(/\/login\.html/);
-        assert.equal(await page.run(() => localStorage.getItem('token')), null);
+        assert.equal(await page.run(() => localStorage.getItem('user')), null);
         await page.goto(`${site.base}/reporter.html`);
         await page.waitForUrl(/\/login\.html\?redirect=%2Freporter\.html/);
     } finally { await close(); }
@@ -700,10 +700,10 @@ flow('Data management: create, find, edit and delete users, comments and view st
         await until(page, () => !document.getElementById('userModal').hidden);
         await page.fill('#userFullName', 'משתמש בדיקה');
         await page.fill('#userUsername', username);
-        await page.fill('#userPassword', '123');                                  // too short: the server explains
+        await page.fill('#userPassword', '123');                                  // too short: the browser stops it first
         await page.click('#userForm button[type="submit"]');
-        await until(page, () => !document.getElementById('userError').hidden);
-        assert.ok((await visibleText(page, '#userError')).length > 5, 'the server\'s explanation is shown');
+        assert.equal(await page.run(() => document.getElementById('userPassword').validity.tooShort), true);
+        assert.equal(await page.run(() => document.getElementById('userModal').hidden), false, 'nothing was sent, the form stays open');
         await page.fill('#userPassword', 'secret-pass-1');
         await page.click('#userForm button[type="submit"]');
         await until(page, () => document.getElementById('userModal').hidden);

@@ -1,6 +1,6 @@
 const User = require('../models/User');
-const { generateToken } = require('../middleware/auth');
 const { logOperation } = require('../middleware/requestLogger');
+const { resolveUser } = require('../middleware/auth');
 const { cleanText } = require('../utils/text');
 
 /**
@@ -8,7 +8,7 @@ const { cleanText } = require('../utils/text');
  */
 const startSession = (req, user) => new Promise((resolve, reject) => {
     if (!req.session) {
-        return resolve();
+        return reject(new Error('Session store is not available'));
     }
     req.session.regenerate((err) => {
         if (err) {
@@ -58,14 +58,6 @@ const login = async (req, res, next) => {
             });
         }
 
-        if (!user.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'המשתמש אינו פעיל'
-            });
-        }
-
-        const token = generateToken(user);
         await startSession(req, user);
 
         logOperation('USER_LOGGED_IN', {
@@ -77,7 +69,6 @@ const login = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: 'התחברת בהצלחה',
-            token,
             user: toUserResponse(user)
         });
     } catch (error) {
@@ -109,14 +100,16 @@ const logout = (req, res, next) => {
 };
 
 /**
- * Get current authenticated user profile
+ * The logged-in user, or null for a guest
  * GET /api/auth/me
  */
-const getMe = async (req, res) => {
-    return res.status(200).json({
-        success: true,
-        user: req.user
-    });
+const getMe = async (req, res, next) => {
+    try {
+        const user = await resolveUser(req);
+        return res.status(200).json({ success: true, user: user ? toUserResponse(user) : null });
+    } catch (error) {
+        next(error);
+    }
 };
 
 module.exports = {
